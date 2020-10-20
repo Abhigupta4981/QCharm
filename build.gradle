@@ -1,0 +1,90 @@
+
+
+plugins {
+    id 'org.springframework.boot' version '2.2.2.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+    id 'java'
+}
+
+group = 'com.crio.stock'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+buildDir = '/tmp/external_build'
+
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+ext {
+    buildId = System.currentTimeMillis()
+    // Dependency versions
+    springBootVersion = '2.1.8.RELEASE'
+    springCoreVersion = '5.1.9.RELEASE'
+    jacksonVersion = "2.9.8"
+}
+
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+    compile("org.springframework.boot:spring-boot-starter-log4j2:$rootProject.ext.springBootVersion") {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-jul'
+        exclude group: 'org.slf4j', module: 'jul-to-slf4j'
+    }
+    
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
+    // log4j2 dependencies
+    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.12.1'
+    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.12.1'
+    //compile group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: '2.12.1'
+    compile group: 'org.apache.logging.log4j', name: 'log4j-jul', version: '2.12.1'
+    compile group: 'org.slf4j', name: 'jul-to-slf4j', version: '1.7.28'
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+}
+
+test {
+    reports {
+        junitXml.enabled = true
+            def destinationDirectory = System.getProperty("user.home") + "/.gradle/daemon/${buildId}/test-results"
+            junitXml.destination = file(destinationDirectory)
+            html.enabled = true
+    }
+    useJUnitPlatform {
+    }
+    afterSuite { desc, result ->
+        if (!desc.parent) {
+            println "\nTEST RESULT: ${result.resultType}"
+                println "TEST SUMMARY: RAN ${result.testCount} TESTS, " +
+                "${result.successfulTestCount} SUCCEEDED, " +
+                "${result.failedTestCount} FAILED, " +
+                "${result.skippedTestCount} SKIPPED"
+        }
+    }
+}
+
+task installGitHooks(type: Copy) {
+    from new File(rootProject.rootDir, '__CRIO__/pre-push')
+    into { new File(rootProject.rootDir, '.git/hooks') }
+    fileMode 0777
+}
+
+build.dependsOn installGitHooks
